@@ -225,9 +225,72 @@
             svg.append("g").attr("transform", `translate(0,${height})`).call(xAxis).call(g => g.select(".domain").remove());
             svg.append("g").call(yAxis).call(g => g.select(".domain").remove());
 
-            // Draw chart elements (rows, bars, etc.)
-            // Code for chart elements remains the same...
+            // Background rows
+            svg.selectAll(".row-bg")
+                .data(y.domain())
+                .enter().append("rect")
+                .attr("class", "row-bg")
+                .attr("x", 0)
+                .attr("y", (d, i) => y(d))
+                .attr("width", width)
+                .attr("height", y.bandwidth())
+                .attr("fill", (d, i) => i % 2 ? "#f9f9f9" : "#ffffff");
 
+            // Bars
+            svg.selectAll(".bar")
+                .data(filteredData)
+                .enter().append("rect")
+                .attr("class", "bar")
+                .attr("x", d => x(d.start))
+                .attr("y", d => y(d.name))
+                .attr("width", d => x(d.end || new Date()) - x(d.start))
+                .attr("height", y.bandwidth())
+                .attr("rx", 5)
+                .attr("fill", d => color(d.id))
+                .on("mouseover", function(event, d) {
+                    tooltip.transition().duration(200).style("opacity", .9);
+                    tooltip.html(
+                        `<strong>Item SKU: ${d.name}</strong><br/>` + 
+                        `End Date: ${d.end ? d3.timeFormat("%B %d, %I:%M %p")(d.end) : "Ongoing"}<br/>` + 
+                        `Event ID: ${d.id}`
+                    );
+
+                    const [xPos, yPos] = d3.pointer(event);
+                    tooltip.style("left", `${xPos + 10}px`).style("top", `${yPos - 40}px`);
+                })
+                .on("mouseout", function() {
+                    tooltip.transition().duration(500).style("opacity", 0);
+                });
+
+            // Vertical grid lines and weekend highlighting
+            for (let dt = startDate; dt <= adjustedEndDate; dt.setDate(dt.getDate() + 1)) {
+                svg.append("line")
+                    .attr("x1", x(new Date(dt)))
+                    .attr("y1", 0)
+                    .attr("x2", x(new Date(dt)))
+                    .attr("y2", height)
+                    .attr("stroke", "#e0e0e0")
+                    .attr("stroke-width", 1)
+                    .attr("stroke-dasharray", "2,2");
+
+                if (dt.getDay() === 0 || dt.getDay() === 6) {
+                    svg.append("rect")
+                        .attr("x", x(new Date(dt)))
+                        .attr("y", 0)
+                        .attr("width", x(new Date(dt.getTime() + 1 * 24 * 60 * 60 * 1000)) - x(new Date(dt)))
+                        .attr("height", height)
+                        .attr("fill", "rgba(255, 223, 186, 0.5)");
+                }
+            }
+
+            // Draw a solid red line for the current time
+            const now = new Date();
+            svg.append("line")
+                .attr("class", "current-time-line")
+                .attr("x1", x(now))
+                .attr("y1", 0)
+                .attr("x2", x(now))
+                .attr("y2", height);
         }
 
         function drawLegend(data, eventIds) {
