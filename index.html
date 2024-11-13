@@ -97,6 +97,23 @@
             fill: none;
             stroke: #e0e0e0;
         }
+        .legend {
+            font-size: 14px;
+            display: flex;
+            flex-wrap: wrap;
+            margin-top: 20px;
+            justify-content: center;
+        }
+        .legend-item {
+            display: flex;
+            align-items: center;
+            margin: 5px;
+        }
+        .legend-color {
+            width: 20px;
+            height: 20px;
+            margin-right: 5px;
+        }
     </style>
 </head>
 <body>
@@ -120,6 +137,8 @@
     <div id="chartContainer">
         <svg id="chart"></svg>
     </div>
+
+    <div class="legend" id="legend"></div>
 
     <script>
         const margin = {top: 70, right: 20, bottom: 30, left: 200},
@@ -160,6 +179,7 @@
                 const uniqueEventIds = Array.from(new Set(data.map(d => d.id)));
                 color = d3.scaleOrdinal(d3.schemeCategory10).domain(uniqueEventIds);
                 drawChart(data);
+                drawLegend(uniqueEventIds);
             });
         }
 
@@ -171,7 +191,6 @@
 
         function drawChart(dataToDisplay) {
             svg.selectAll("*").remove();
-
             const selectedDate = new Date(document.getElementById("datePicker").value);
             if (isNaN(selectedDate)) {
                 alert("Please select a valid date.");
@@ -251,27 +270,6 @@
                     tooltip.transition().duration(500).style("opacity", 0);
                 });
 
-            // Vertical grid lines and weekend highlighting
-            for (let dt = startDate; dt <= adjustedEndDate; dt.setDate(dt.getDate() + 1)) {
-                svg.append("line")
-                    .attr("x1", x(new Date(dt)))
-                    .attr("y1", 0)
-                    .attr("x2", x(new Date(dt)))
-                    .attr("y2", height)
-                    .attr("stroke", "#e0e0e0")
-                    .attr("stroke-width", 1)
-                    .attr("stroke-dasharray", "2,2");
-
-                if (dt.getDay() === 0 || dt.getDay() === 6) {
-                    svg.append("rect")
-                        .attr("x", x(new Date(dt)))
-                        .attr("y", 0)
-                        .attr("width", x(new Date(dt.getTime() + 1 * 24 * 60 * 60 * 1000)) - x(new Date(dt)))
-                        .attr("height", height)
-                        .attr("fill", "rgba(255, 223, 186, 0.5)");
-                }
-            }
-
             // Draw a solid red line for the current time
             const now = new Date();
             svg.append("line")
@@ -280,6 +278,19 @@
                 .attr("y1", 0)
                 .attr("x2", x(now))
                 .attr("y2", height);
+        }
+
+        function drawLegend(eventIds) {
+            const legend = d3.select("#legend");
+
+            eventIds.forEach(id => {
+                const legendItem = legend.append("div").attr("class", "legend-item");
+                legendItem.append("div")
+                    .attr("class", "legend-color")
+                    .style("background-color", color(id));
+
+                legendItem.append("span").text(`Event ID: ${id}`);
+            });
         }
 
         function changeDay(direction) {
