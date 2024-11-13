@@ -116,7 +116,7 @@
             <option value="30" selected>30 Days Ahead</option>
         </select>
     </div>
-    
+
     <div id="chartContainer">
         <svg id="chart"></svg>
     </div>
@@ -173,6 +173,11 @@
             svg.selectAll("*").remove();
 
             const selectedDate = new Date(document.getElementById("datePicker").value);
+            if (isNaN(selectedDate)) {
+                alert("Please select a valid date.");
+                return;
+            }
+
             const daysAhead = parseInt(document.getElementById("dayRange").value);
             const endDate = new Date(selectedDate);
             endDate.setDate(endDate.getDate() + daysAhead);
@@ -190,6 +195,8 @@
             }
 
             const startDate = new Date(Math.min(...filteredData.map(d => d.start)));
+            startDate.setHours(0, 0, 0, 0); // Round to the start of the day
+
             const adjustedEndDate = endDate < new Date(Math.max(...filteredData.map(d => d.end || currentDay)))
                 ? endDate
                 : new Date(Math.max(...filteredData.map(d => d.end || currentDay)));
