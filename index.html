@@ -47,6 +47,23 @@
             border: 1px solid #ccc;
             border-radius: 5px;
         }
+        #eventIds {
+            margin-bottom: 20px;
+        }
+        #eventIds table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+        }
+        #eventIds th, #eventIds td {
+            border: 1px solid #ccc;
+            padding: 10px;
+            text-align: left;
+        }
+        #eventIds th {
+            background-color: #f0f0f0;
+            font-weight: bold;
+        }
         #chartContainer {
             height: 500px;
             overflow: auto;
@@ -117,6 +134,22 @@
         </select>
     </div>
 
+    <!-- Event IDs table above the chart -->
+    <div id="eventIds">
+        <h3>Event IDs in Selected Range:</h3>
+        <table>
+            <thead>
+                <tr>
+                    <th>Event ID</th>
+                    <th>Name</th>
+                    <th>Start</th>
+                    <th>End</th>
+                </tr>
+            </thead>
+            <tbody id="eventIdList"></tbody>
+        </table>
+    </div>
+
     <div id="chartContainer">
         <svg id="chart"></svg>
     </div>
@@ -171,6 +204,7 @@
 
         function drawChart(dataToDisplay) {
             svg.selectAll("*").remove();
+            document.getElementById("eventIdList").innerHTML = ""; // Clear the event list
 
             const selectedDate = new Date(document.getElementById("datePicker").value);
             if (isNaN(selectedDate)) {
@@ -182,7 +216,10 @@
             const endDate = new Date(selectedDate);
             endDate.setDate(endDate.getDate() + daysAhead);
 
-            const filteredData = dataToDisplay.filter(d => (d.start && d.start > selectedDate) || (d.end && d.end >= selectedDate));
+            const filteredData = dataToDisplay.filter(d => {
+                return (d.start && d.start >= selectedDate && d.start <= endDate) ||
+                       (d.end && d.end >= selectedDate && d.end <= endDate);
+            });
 
             if (filteredData.length === 0) {
                 svg.append("text")
@@ -190,13 +227,12 @@
                     .attr("y", height / 2)
                     .attr("text-anchor", "middle")
                     .text("No entries after the selected date.")
-                    .style("font-size", "16px");
+                    .style("font-size", "16px")
+                    .style("fill", "#888");
                 return;
             }
 
             const startDate = new Date(Math.min(...filteredData.map(d => d.start)));
-            startDate.setHours(0, 0, 0, 0); // Round to the start of the day
-
             const adjustedEndDate = endDate < new Date(Math.max(...filteredData.map(d => d.end || currentDay)))
                 ? endDate
                 : new Date(Math.max(...filteredData.map(d => d.end || currentDay)));
@@ -206,6 +242,27 @@
 
             svg.append("g").attr("transform", `translate(0,${height})`).call(xAxis).call(g => g.select(".domain").remove());
             svg.append("g").call(yAxis).call(g => g.select(".domain").remove());
+
+            // Collect and display the Event IDs with start and end times
+            const eventIdsInRange = filteredData.map(d => ({
+                id: d.id,
+                name: d.name,
+                start: d.start,
+                end: d.end
+            }));
+
+            // Display the event IDs and names in a table
+            const eventList = document.getElementById("eventIdList");
+            eventIdsInRange.forEach(event => {
+                const tr = document.createElement("tr");
+                tr.innerHTML = `
+                    <td>${event.id}</td>
+                    <td>${event.name}</td>
+                    <td>${event.start ? d3.timeFormat("%B %d, %I:%M %p")(event.start) : "N/A"}</td>
+                    <td>${event.end ? d3.timeFormat("%B %d, %I:%M %p")(event.end) : "Ongoing"}</td>
+                `;
+                eventList.appendChild(tr);
+            });
 
             // Day of month and day labels
             for (let dt = new Date(startDate); dt <= adjustedEndDate; dt.setDate(dt.getDate() + 1)) {
