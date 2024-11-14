@@ -97,23 +97,6 @@
             fill: none;
             stroke: #e0e0e0;
         }
-        .legend {
-            font-size: 14px;
-            display: flex;
-            flex-wrap: wrap;
-            margin-top: 20px;
-            justify-content: center;
-        }
-        .legend-item {
-            display: flex;
-            align-items: center;
-            margin: 5px;
-        }
-        .legend-color {
-            width: 20px;
-            height: 20px;
-            margin-right: 5px;
-        }
     </style>
 </head>
 <body>
@@ -137,8 +120,6 @@
     <div id="chartContainer">
         <svg id="chart"></svg>
     </div>
-
-    <div class="legend" id="legend"></div>
 
     <script>
         const margin = {top: 70, right: 20, bottom: 30, left: 200},
@@ -179,7 +160,6 @@
                 const uniqueEventIds = Array.from(new Set(data.map(d => d.id)));
                 color = d3.scaleOrdinal(d3.schemeCategory10).domain(uniqueEventIds);
                 drawChart(data);
-                drawLegend(data, uniqueEventIds);
             });
         }
 
@@ -187,11 +167,11 @@
             const searchText = document.getElementById("searchBar").value.toLowerCase();
             const filteredData = data.filter(d => d.name.toLowerCase().includes(searchText));
             drawChart(filteredData);
-            drawLegend(filteredData, Array.from(new Set(filteredData.map(d => d.id))));
         }
 
         function drawChart(dataToDisplay) {
             svg.selectAll("*").remove();
+
             const selectedDate = new Date(document.getElementById("datePicker").value);
             if (isNaN(selectedDate)) {
                 alert("Please select a valid date.");
@@ -215,6 +195,8 @@
             }
 
             const startDate = new Date(Math.min(...filteredData.map(d => d.start)));
+            startDate.setHours(0, 0, 0, 0); // Round to the start of the day
+
             const adjustedEndDate = endDate < new Date(Math.max(...filteredData.map(d => d.end || currentDay)))
                 ? endDate
                 : new Date(Math.max(...filteredData.map(d => d.end || currentDay)));
@@ -224,6 +206,13 @@
 
             svg.append("g").attr("transform", `translate(0,${height})`).call(xAxis).call(g => g.select(".domain").remove());
             svg.append("g").call(yAxis).call(g => g.select(".domain").remove());
+
+            // Day of month and day labels
+            for (let dt = new Date(startDate); dt <= adjustedEndDate; dt.setDate(dt.getDate() + 1)) {
+                const xPosition = x(dt) + (x(new Date(dt.getTime() + 1 * 24 * 60 * 60 * 1000)) - x(dt)) / 2;
+                svg.append("text").attr("class", "date-label").attr("x", xPosition).attr("y", -20).text(d3.timeFormat("%d")(dt));
+                svg.append("text").attr("class", "day-label").attr("x", xPosition).attr("y", 0).text(d3.timeFormat("%a")(dt));
+            }
 
             // Background rows
             svg.selectAll(".row-bg")
@@ -293,39 +282,14 @@
                 .attr("y2", height);
         }
 
-        function drawLegend(data, eventIds) {
-            const legend = d3.select("#legend");
-            legend.selectAll("*").remove(); // Clear previous legend
-
-            // Filter event IDs based on the date range
-            const selectedDate = new Date(document.getElementById("datePicker").value);
-            const daysAhead = parseInt(document.getElementById("dayRange").value);
-            const endDate = new Date(selectedDate);
-            endDate.setDate(endDate.getDate() + daysAhead);
-
-            const relevantEventIds = eventIds.filter(id => {
-                return data.some(d => d.id === id && ((d.start && d.start <= endDate) || (d.end && d.end >= selectedDate)));
-            });
-
-            relevantEventIds.forEach(id => {
-                const legendItem = legend.append("div").attr("class", "legend-item");
-                legendItem.append("div")
-                    .attr("class", "legend-color")
-                    .style("background-color", color(id));
-                legendItem.append("span").text(`Event ID: ${id}`);
-            });
-        }
-
         function changeDay(direction) {
             currentDay.setDate(currentDay.getDate() + direction);
             document.getElementById("datePicker").value = d3.timeFormat("%Y-%m-%d")(currentDay);
             drawChart(data);
-            drawLegend(data, Array.from(new Set(data.map(d => d.id))));
         }
 
         function selectDate() {
             drawChart(data);
-            drawLegend(data, Array.from(new Set(data.map(d => d.id))));
         }
     </script>
 </body>
